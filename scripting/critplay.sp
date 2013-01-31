@@ -20,7 +20,7 @@
 #include <smlib>
 
 #define PLUGIN_AUTHOR "atomic-penguin"
-#define PLUGIN_VERSION "0.1.0"
+#define PLUGIN_VERSION "1.0.0"
 #define PLUGIN_NAME "Critplay"
 #define PLUGIN_DESCRIPTION "Manages critical hits, and weapon/damage spread based on player count."
 #define PLUGIN_URL "https://github.com/atomic-penguin/sm-critplay"
@@ -97,7 +97,7 @@ public OnPluginStart() {
     cvar_LogActivity = CreateConVar("cp_log_activity", "1", "Whether or not to log activity in the server chat area. Default 1/True.", _, true, 0.0, true, 1.0);
 	
     // Auto-create the config file
-    //AutoExecConfig(true, "plugin.critplay");
+    AutoExecConfig(true, "plugin.critplay");
 
     // Initialize global vars
     bEnabled = GetConVarBool(cvar_Enabled);
@@ -158,10 +158,10 @@ stock CheckPlayerThreshold() {
     new iQuickplayThreshold=GetConVarBool(cvar_QuickplayThreshold);
     new iNocritsThreshold=GetConVarBool(cvar_NocritsThreshold);
     new iClientCount=Client_GetCount(false, bCountBots);
-    if ((iClientCount <= iQuickplayThreshold) && IsQuickplayMap()) {
+    if ((iClientCount <= iQuickplayThreshold) && IsQuickplayMap() && !HasCrits()) {
         SetCritPlay(true);
         if (bLogActivity) PrintToChatAll("\x04[SM] %s\x01 turned \x03ON\x01 random/bonus crits, and weapon/damage spread due to player threshold.", PLUGIN_NAME);
-    } else if (iClientCount >= iNocritsThreshold) {
+    } else if ((iClientCount >= iNocritsThreshold) && HasCrits()) {
         SetCritPlay(false);
         if (bLogActivity) PrintToChatAll("\x04[SM] %s\x01 turned \x03OFF\x01 random/bonus crits, and weapon/damage spread due to player threshold.", PLUGIN_NAME);
     }
@@ -176,4 +176,8 @@ stock bool:IsQuickplayMap() {
     } else {
         return true;
     }
+}
+
+stock bool:HasCrits() {
+    return GetConVarBool(FindConVar("tf_weapon_criticals"));
 }
