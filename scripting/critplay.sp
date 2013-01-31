@@ -34,11 +34,7 @@ new Handle:cvar_LogActivity;
 
 // Internal global vars
 new bool:bEnabled;
-new bool:bQuickplayMap = true;
-new bool:bCountBots;
 new bool:bLogActivity;
-new iQuickplayThreshold;
-new iNocritsThreshold;
 
 static const String:quickplay_maps[][] = {
     "cp_dustbowl",
@@ -105,46 +101,57 @@ public OnPluginStart() {
 
     // Initialize global vars
     bEnabled = GetConVarBool(cvar_Enabled);
-    bCountBots = GetConVarBool(cvar_CountBots);
     bLogActivity = GetConVarBool(cvar_LogActivity);
-    iQuickplayThreshold = GetConVarInt(cvar_QuickplayThreshold);
-    iNocritsThreshold = GetConVarInt(cvar_NocritsThreshold);
+
+    HookConVarChange(cvar_Enabled, cvhook_enabled);
 
     if (bEnabled && bLogActivity) {
-        // Remove NOTIFY flags
-        Convar_RemoveFlags(FindConVar("tf_damage_disablespread"), FCVAR_NOTIFY);
-        Convar_RemoveFlags(FindConVar("tf_weapon_criticals"), FCVAR_NOTIFY);
-        Convar_RemoveFlags(FindConVar("tf_use_fixed_weaponspreads"), FCVAR_NOTIFY);
-        Convar_RemoveFlags(FindConVar("tf_ctf_bonus_time"), FCVAR_NOTIFY);
+        ModifyNotifyFlags(true);
     }
 }
 
 public OnConfigsExecuted() {
     // Initialize global vars
     bEnabled = GetConVarBool(cvar_Enabled);
-    bCountBots = GetConVarBool(cvar_CountBots);
     bLogActivity = GetConVarBool(cvar_LogActivity);
-    iQuickplayThreshold = GetConVarInt(cvar_QuickplayThreshold);
-    iNocritsThreshold = GetConVarInt(cvar_NocritsThreshold);
+
+    if (bEnabled && bLogActivity) {
+        ModifyNotifyFlags(true);
+    }
 }
 
 public OnMapStart() {
+    if (!bEnabled) return;
     // Check if map is quickplay
-    bQuickplayMap=IsQuickplayMap();
-    SetCritPlay(bQuickplayMap);
-    if (bLogActivity) {
-        PrintToChatAll("\x04[%s]\x01 turned \x03on\x01 random/bonus crits and weapon/damage spread due to quickplay map.", PLUGIN_NAME);
+    if (IsQuickplayMap()) {
+        SetCritPlay(true);
+        if (bLogActivity) PrintToChatAll("\x04[%s]\x01 turned \x03on\x01 random/bonus crits and weapon/damage spread due to quickplay map.", PLUGIN_NAME);
     } else {
+        SetCritPlay(false);
         PrintToChatAll("\x04[%s]\x01 turned \x03off\x01 random/bonus crits and weapon/damage spread due to non-quickplay map.", PLUGIN_NAME);
     }
 }
 
-public OnMapEnd() {
-    bQuickplayMap = true;
+public OnPluginEnd() {
+    ModifyNotifyFlags(false);
 }
 
-public OnPluginEnd() {
-    if (bEnabled && bLogActivity) {
+public cvhook_enabled(Handle:cvar, const String:oldVal[], const String:newVal[]) {
+    if (GetConVarBool(cvar)) {
+        ModifyNotifyFlags(true);
+    } else {
+        ModifyNotifyFlags(false);
+    }
+}
+
+stock ModifyNotifyFlags(bool:bModFlagsState=true) {
+    if (bEnabled && bLogActivity && bModFlagsState) {
+         // Remove NOTIFY flags
+        Convar_RemoveFlags(FindConVar("tf_damage_disablespread"), FCVAR_NOTIFY);
+        Convar_RemoveFlags(FindConVar("tf_weapon_criticals"), FCVAR_NOTIFY);
+        Convar_RemoveFlags(FindConVar("tf_use_fixed_weaponspreads"), FCVAR_NOTIFY);
+        Convar_RemoveFlags(FindConVar("tf_ctf_bonus_time"), FCVAR_NOTIFY);
+    } else if (!bEnabled || !bLogActivity || !bModFlagsState) {
         // Restore NOTIFY flags
         Convar_AddFlags(FindConVar("tf_damage_disablespread"), FCVAR_NOTIFY);
         Convar_AddFlags(FindConVar("tf_weapon_criticals"), FCVAR_NOTIFY);
@@ -185,8 +192,11 @@ public SetCritPlay(bool:bCritPlayState) {
 
 stock CheckPlayerThreshold() {
     if (!bEnabled) return;
+    new bool:bCountBots=GetConVarBool(cvar_CountBots);
+    new iQuickplayThreshold=GetConVarBool(cvar_QuickplayThreshold);
+    new iNocritsThreshold=GetConVarBool(cvar_NocritsThreshold);
     new iClientCount=Client_GetCount(false, bCountBots);
-    if ((iClientCount <= iQuickplayThreshold) && bQuickplayMap) {
+    if ((iClientCount <= iQuickplayThreshold) && IsQuickplayMap()) {
         SetCritPlay(true);
         if (bLogActivity) PrintToChatAll("\x04[%s]\x01 turned \x03on\x01 random/bonus crits, and weapon/damage spread due to player threshold.", PLUGIN_NAME);
     } else if (iClientCount >= iNocritsThreshold) {
@@ -196,6 +206,7 @@ stock CheckPlayerThreshold() {
 }
 
 stock bool:IsQuickplayMap() {
+    if (!bEnabled) return true;
     decl String:curMap[64];
     GetCurrentMap(curMap, sizeof(curMap));
     if (Array_FindString(quickplay_maps, sizeof(quickplay_maps), curMap)==-1) {
