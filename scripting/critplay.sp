@@ -21,7 +21,7 @@
 
 #define PLUGIN_AUTHOR "atomic-penguin"
 #define PLUGIN_VERSION "0.1.0"
-#define PLUGIN_NAME "Critplay Manager"
+#define PLUGIN_NAME "Critplay"
 #define PLUGIN_DESCRIPTION "Manages critical hits, and weapon/damage spread based on player count."
 #define PLUGIN_URL "https://github.com/atomic-penguin/sm-critplay"
 
@@ -115,10 +115,10 @@ public OnMapStart() {
     // Check if map is quickplay
     if (IsQuickplayMap()) {
         SetCritPlay(true);
-        if (bLogActivity) PrintToChatAll("\x04[%s]\x01 turned \x03on\x01 random/bonus crits and weapon/damage spread due to quickplay map.", PLUGIN_NAME);
+        if (bLogActivity) PrintToChatAll("\x04[SM] %s\x01 turned \x03ON\x01 random/bonus crits and weapon/damage spread due to quickplay map.", PLUGIN_NAME);
     } else {
         SetCritPlay(false);
-        PrintToChatAll("\x04[%s]\x01 turned \x03off\x01 random/bonus crits and weapon/damage spread due to non-quickplay map.", PLUGIN_NAME);
+        PrintToChatAll("\x04[SM] %s\x01 turned \x03OFF\x01 random/bonus crits and weapon/damage spread due to non-quickplay map.", PLUGIN_NAME);
     }
 }
 
@@ -160,10 +160,10 @@ stock CheckPlayerThreshold() {
     new iClientCount=Client_GetCount(false, bCountBots);
     if ((iClientCount <= iQuickplayThreshold) && IsQuickplayMap()) {
         SetCritPlay(true);
-        if (bLogActivity) PrintToChatAll("\x04[%s]\x01 turned \x03on\x01 random/bonus crits, and weapon/damage spread due to player threshold.", PLUGIN_NAME);
+        if (bLogActivity) PrintToChatAll("\x04[SM] %s\x01 turned \x03ON\x01 random/bonus crits, and weapon/damage spread due to player threshold.", PLUGIN_NAME);
     } else if (iClientCount >= iNocritsThreshold) {
         SetCritPlay(false);
-        if (bLogActivity) PrintToChatAll("\x04[%s]\x01 turned \x03off\x01 random/bonus crits, and weapon/damage spread due to player threshold.", PLUGIN_NAME);
+        if (bLogActivity) PrintToChatAll("\x04[SM] %s\x01 turned \x03OFF\x01 random/bonus crits, and weapon/damage spread due to player threshold.", PLUGIN_NAME);
     }
 }
 
