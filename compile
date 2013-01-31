@@ -1,0 +1,7 @@
+#!/bin/bash 
+
+RET=0
+spcomp scripting/critplay.sp -iscripting/include -oplugins/critplay.smx
+let RET=$?
+
+exit $RET
