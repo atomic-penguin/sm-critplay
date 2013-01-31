@@ -102,22 +102,12 @@ public OnPluginStart() {
     // Initialize global vars
     bEnabled = GetConVarBool(cvar_Enabled);
     bLogActivity = GetConVarBool(cvar_LogActivity);
-
-    HookConVarChange(cvar_Enabled, cvhook_enabled);
-
-    if (bEnabled && bLogActivity) {
-        ModifyNotifyFlags(true);
-    }
 }
 
 public OnConfigsExecuted() {
     // Initialize global vars
     bEnabled = GetConVarBool(cvar_Enabled);
     bLogActivity = GetConVarBool(cvar_LogActivity);
-
-    if (bEnabled && bLogActivity) {
-        ModifyNotifyFlags(true);
-    }
 }
 
 public OnMapStart() {
@@ -129,34 +119,6 @@ public OnMapStart() {
     } else {
         SetCritPlay(false);
         PrintToChatAll("\x04[%s]\x01 turned \x03off\x01 random/bonus crits and weapon/damage spread due to non-quickplay map.", PLUGIN_NAME);
-    }
-}
-
-public OnPluginEnd() {
-    ModifyNotifyFlags(false);
-}
-
-public cvhook_enabled(Handle:cvar, const String:oldVal[], const String:newVal[]) {
-    if (GetConVarBool(cvar)) {
-        ModifyNotifyFlags(true);
-    } else {
-        ModifyNotifyFlags(false);
-    }
-}
-
-stock ModifyNotifyFlags(bool:bModFlagsState=true) {
-    if (bEnabled && bLogActivity && bModFlagsState) {
-         // Remove NOTIFY flags
-        Convar_RemoveFlags(FindConVar("tf_damage_disablespread"), FCVAR_NOTIFY);
-        Convar_RemoveFlags(FindConVar("tf_weapon_criticals"), FCVAR_NOTIFY);
-        Convar_RemoveFlags(FindConVar("tf_use_fixed_weaponspreads"), FCVAR_NOTIFY);
-        Convar_RemoveFlags(FindConVar("tf_ctf_bonus_time"), FCVAR_NOTIFY);
-    } else if (!bEnabled || !bLogActivity || !bModFlagsState) {
-        // Restore NOTIFY flags
-        Convar_AddFlags(FindConVar("tf_damage_disablespread"), FCVAR_NOTIFY);
-        Convar_AddFlags(FindConVar("tf_weapon_criticals"), FCVAR_NOTIFY);
-        Convar_AddFlags(FindConVar("tf_use_fixed_weaponspreads"), FCVAR_NOTIFY);
-        Convar_AddFlags(FindConVar("tf_ctf_bonus_time"), FCVAR_NOTIFY);
     }
 }
 
