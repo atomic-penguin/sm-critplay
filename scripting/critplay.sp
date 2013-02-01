@@ -166,16 +166,16 @@ stock CheckPlayerThreshold(bool:bCountConnecting=false, bool:bCountBots=false) {
     new iNocritsThreshold=GetConVarInt(cvar_NocritsThreshold);
     new iClientCount=Client_GetCount(bCountConnecting, bCountBots);
     new bool:bQuickplayMap=IsQuickplayMap();
-    if (!HasCrits && (iClientCount <= iQuickplayThreshold && bQuickplayMap)) {
+    new bool:bHasCrits=GetConVarBool(FindConVar("tf_weapon_criticals"));
+    if (!bHasCrits && (bQuickplayMap && iClientCount <= iQuickplayThreshold)) {
         SetCritPlay(true);
         if (bLogActivity) PrintToChatAll("\x04[SM] %s\x01 turned \x03ON\x01 random/bonus crits, and weapon/damage spread due to low player threshold", PLUGIN_NAME);
-    } else if (HasCrits && (!bQuickplayMap || iClientCount >= iNocritsThreshold)) {
+    } else if (bHasCrits && (!bQuickplayMap)) {
         SetCritPlay(false);
-        if (!bQuickplayMap) {
-            if (bLogActivity) PrintToChatAll("\x04[SM] %s\x01 turned \x03OFF\x01 random/bonus crits, and weapon/damage spread due to non-quickplay map.", PLUGIN_NAME);
-        } else {
-            if (bLogActivity) PrintToChatAll("\x04[SM] %s\x01 turned \x03OFF\x01 random/bonus crits, and weapon/damage spread due to high player threshold.", PLUGIN_NAME);
-        }
+        if (bLogActivity) PrintToChatAll("\x04[SM] %s\x01 turned \x03OFF\x01 random/bonus crits, and weapon/damage spread due to non-quickplay map.", PLUGIN_NAME);
+    } else if (bHasCrits && (iClientCount >= iNocritsThreshold)) {
+        SetCritPlay(false);
+        if (bLogActivity) PrintToChatAll("\x04[SM] %s\x01 turned \x03OFF\x01 random/bonus crits, and weapon/damage spread due to high player threshold.", PLUGIN_NAME);
     }
 }
 
@@ -194,13 +194,4 @@ stock bool:IsQuickplayMap() {
     } else {
         return true;
     }
-}
-
-/**
- * Guard against repeatedly setting crits on/off
- * 
- * returns bool value of tf_weapon_criticals
- */
-stock bool:HasCrits() {
-    return GetConVarBool(FindConVar("tf_weapon_criticals"));
 }
