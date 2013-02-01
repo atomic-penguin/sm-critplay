@@ -29,7 +29,6 @@
 new Handle:cvar_Enabled;
 new Handle:cvar_QuickplayThreshold;
 new Handle:cvar_NocritsThreshold;
-new Handle:cvar_CountBots;
 new Handle:cvar_LogActivity;
 
 // Internal global vars
@@ -93,11 +92,12 @@ public OnPluginStart() {
     cvar_Enabled = CreateConVar("cp_enabled", "1", "Disable/enable critplay plugin. Default 0/Disabled.", _, true, 0.0, true, 1.0);
     cvar_QuickplayThreshold = CreateConVar("cp_quickplay_threshold", "8", "Lower player threshold to turn on crits/random spread. Default 8.", _, true, 0.0, true, 12.0);
     cvar_NocritsThreshold = CreateConVar("cp_nocrits_threshold", "18", "High player threshold to turn on crits/random spread. Default 18.", _, true, 12.0, true, 24.0);
-    cvar_CountBots = CreateConVar("cp_count_bots", "0", "Whether or not to count bots in threshold count. Default 0/false.", _, true, 0.0, true, 1.0);
     cvar_LogActivity = CreateConVar("cp_log_activity", "1", "Whether or not to log activity in the server chat area. Default 1/True.", _, true, 0.0, true, 1.0);
-	
+
     // Auto-create the config file
     AutoExecConfig(true, "plugin.critplay");
+
+    HookConVarChange(cvar_Enabled, cvhook_enabled);
 
     // Initialize global vars
     bEnabled = GetConVarBool(cvar_Enabled);
@@ -112,24 +112,26 @@ public OnConfigsExecuted() {
 
 public OnMapStart() {
     if (!bEnabled) return;
-    // Check if map is quickplay
-    if (IsQuickplayMap()) {
-        SetCritPlay(true);
-        if (bLogActivity) PrintToChatAll("\x04[SM] %s\x01 turned \x03ON\x01 random/bonus crits and weapon/damage spread due to quickplay map.", PLUGIN_NAME);
-    } else {
-        SetCritPlay(false);
-        PrintToChatAll("\x04[SM] %s\x01 turned \x03OFF\x01 random/bonus crits and weapon/damage spread due to non-quickplay map.", PLUGIN_NAME);
-    }
+    // Include connecting players in count on map start.
+    CheckPlayerThreshold(true, false);
 }
 
 public OnClientConnected(client) {
-    CheckPlayerThreshold();
+    if (!bEnabled) return;
+    CheckPlayerThreshold(false, false);
 }
 
 public OnClientDisconnect(client) {
-    CheckPlayerThreshold();
+    if (!bEnabled) return;
+    CheckPlayerThreshold(false, false);
 }
 
+public cvhook_enabled(Handle:cvar, const String:oldVal[], const String:newVal[]) {
+    // Restore default settings, if disabled
+    if (!GetConVarBool(cvar)) {
+        SetCritPlay(false);
+    }
+}
 
 /**
  * Set the Critical hits, damage spread, weapon spread, and CTF crits on/off
@@ -137,9 +139,9 @@ public OnClientDisconnect(client) {
  * @param1    True: turns on vanilla settings
  *            False: turns off random crits, uses fixed spread
  */
-public SetCritPlay(bool:bCritPlayState) {
+stock SetCritPlay(bool:bQuickplayState=true) {
     if (!bEnabled) return;
-    if (bCritPlayState) {
+    if (bQuickplayState) {
         SetConVarInt(FindConVar("tf_damage_disablespread"), 0);
         SetConVarInt(FindConVar("tf_weapon_criticals"), 1);
         SetConVarInt(FindConVar("tf_use_fixed_weaponspreads"), 0);
@@ -152,21 +154,37 @@ public SetCritPlay(bool:bCritPlayState) {
     }
 }
 
-stock CheckPlayerThreshold() {
+/**
+ * Checks player threshold 
+ *
+ * @param1    Bool: count connecting players
+ * @param2    Bool: include bots/fake players in count
+ */
+stock CheckPlayerThreshold(bool:bCountConnecting=false, bool:bCountBots=false) {
     if (!bEnabled) return;
-    new bool:bCountBots=GetConVarBool(cvar_CountBots);
-    new iQuickplayThreshold=GetConVarBool(cvar_QuickplayThreshold);
-    new iNocritsThreshold=GetConVarBool(cvar_NocritsThreshold);
-    new iClientCount=Client_GetCount(false, bCountBots);
-    if ((iClientCount <= iQuickplayThreshold) && IsQuickplayMap() && !HasCrits()) {
+    new iQuickplayThreshold=GetConVarInt(cvar_QuickplayThreshold);
+    new iNocritsThreshold=GetConVarInt(cvar_NocritsThreshold);
+    new iClientCount=Client_GetCount(bCountConnecting, bCountBots);
+    new bool:bQuickplayMap=IsQuickplayMap();
+    if (!HasCrits && (iClientCount <= iQuickplayThreshold && bQuickplayMap)) {
         SetCritPlay(true);
-        if (bLogActivity) PrintToChatAll("\x04[SM] %s\x01 turned \x03ON\x01 random/bonus crits, and weapon/damage spread due to player threshold.", PLUGIN_NAME);
-    } else if ((iClientCount >= iNocritsThreshold) && HasCrits()) {
+        if (bLogActivity) PrintToChatAll("\x04[SM] %s\x01 turned \x03ON\x01 random/bonus crits, and weapon/damage spread due to low player threshold", PLUGIN_NAME);
+    } else if (HasCrits && (!bQuickplayMap || iClientCount >= iNocritsThreshold)) {
         SetCritPlay(false);
-        if (bLogActivity) PrintToChatAll("\x04[SM] %s\x01 turned \x03OFF\x01 random/bonus crits, and weapon/damage spread due to player threshold.", PLUGIN_NAME);
+        if (!bQuickplayMap) {
+            if (bLogActivity) PrintToChatAll("\x04[SM] %s\x01 turned \x03OFF\x01 random/bonus crits, and weapon/damage spread due to non-quickplay map.", PLUGIN_NAME);
+        } else {
+            if (bLogActivity) PrintToChatAll("\x04[SM] %s\x01 turned \x03OFF\x01 random/bonus crits, and weapon/damage spread due to high player threshold.", PLUGIN_NAME);
+        }
     }
 }
 
+/**
+ * Checks map name against list of Quickplay maps
+ *
+ * returns false if not Quickplay-enabled
+ * returns true if map qualifies for Quickplay
+ */
 stock bool:IsQuickplayMap() {
     if (!bEnabled) return true;
     decl String:curMap[64];
@@ -178,6 +196,11 @@ stock bool:IsQuickplayMap() {
     }
 }
 
+/**
+ * Guard against repeatedly setting crits on/off
+ * 
+ * returns bool value of tf_weapon_criticals
+ */
 stock bool:HasCrits() {
     return GetConVarBool(FindConVar("tf_weapon_criticals"));
 }
